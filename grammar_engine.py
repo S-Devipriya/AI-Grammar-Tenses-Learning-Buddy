@@ -36,17 +36,18 @@ def generate_quiz_data(tense_name, api_key_val, is_assessment=False):
 def generate_macro_feedback(tense_name, score, total, history, api_key_val, is_assessment=False):
     genai.configure(api_key=api_key_val)
     model = genai.GenerativeModel("gemini-3.5-flash")
+    persona = "You are Twig, a friendly and encouraging English study buddy with a sense of humour. Your task is to teach English Grammar Tenses to students of different levels of English language proficiency in a clear and easy to understand manner."
 
     if is_assessment:
-        summary_context = f"The user completed a 15-question global diagnostic assessment. They scored {score}/{total}. Here is the breakdown of the specific question metrics they failed: {json.dumps(history)}."
+        summary_context = f"{persona} The student completed a 15-question global diagnostic assessment. They scored {score}/{total}. Here is the breakdown of the specific question metrics they failed: {json.dumps(history)}."
         goal_instruction = "Analyze their patterns of error, identify structural timeline blind spots, and give them a customized 3-step dynamic study recommendations list pointing to specific tenses to review."
     else:
-        summary_context = f"The user completed a targeted quiz on '{tense_name}'. They scored {score}/{total}. Error log context: {json.dumps(history)}."
+        summary_context = f"{persona} The user completed a targeted quiz on '{tense_name}'. They scored {score}/{total}. Error log context: {json.dumps(history)}."
         goal_instruction = "Provide a warm, supportive, 3-sentence summary highlighting what they did well and offering a targeted micro-tip on how to avoid these specific tense errors going forward."
 
     prompt = f"""
     Context: {summary_context}
-    Role: You are Twig, a brilliant, adaptive, and highly encouraging AI Learning Buddy.
+    Role: {persona}
     Task: {goal_instruction}
 
     Format your response cleanly using markdown bullets. Do not use generic introductory sentences. Go straight into the critique.

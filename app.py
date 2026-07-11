@@ -3,9 +3,9 @@ import google.generativeai as genai
 from grammar_engine import generate_quiz_data, generate_macro_feedback
 
 # --- PAGE CONFIGURATION ---
-st.set_page_config(page_title="Grammar Tense Learning Buddy", page_icon="📚", layout="centered")
-st.title("📚 Grammar Tense Learning Buddy")
-st.write("Master English tenses through bite-sized breakdowns and interactive practice with your study buddy Twig!")
+st.set_page_config(page_title="Twig the Study Buddy", page_icon="📚", layout="centered")
+st.title("📚 Twig the Study Buddy")
+st.write("Master English tenses through easy lessons and interactive quizzes with your study buddy Twig!")
 
 api_key = st.secrets["GEMINI_API_KEY"]
 
@@ -19,67 +19,69 @@ for key, default in [
     if key not in st.session_state: st.session_state[key] = default
 
 # --- ACTIVITY MODE SELECTION ---
-option = st.selectbox("Choose an Activity:", ["Break Down Concept", "Read Real-Life Examples", "Take Interactive Quiz", "Get Assessment Feedback"])
+with st.sidebar:
+    option = st.selectbox("Choose an Activity:", ["Break Down Concept", "Read Real-Life Examples", "Take Interactive Quiz", "Get Assessment Feedback"])
 
-selected_tense = None
-if option != "Get Assessment Feedback":
-    st.markdown("### 🎯 Choose Your Target Tense")
-    main_category = st.selectbox("Select Time Horizon:", ["-- Select --", "Present", "Past", "Future"])
-    sub_tenses = ["Simple", "Continuous", "Perfect", "Perfect Continuous"]
-    if main_category != "-- Select --":
-        chosen_sub = st.radio(f"Choose the specific {main_category} Tense form:", sub_tenses, horizontal=True)
-        selected_tense = f"Simple {main_category}" if chosen_sub == "Simple" else f"{main_category} {chosen_sub}"
-    if selected_tense: st.info(f"Active Focus: **{selected_tense}**")
-    else: st.warning("Please select a time horizon and sub-tense from above to get started.")
-else:
-    st.info("🚀 **Global Diagnostic Mode Active:** 15-question mixed assessment.")
-    selected_tense = "All Tenses Comprehensive Assessment"
-
-# --- CONTROLLER ACTIONS ---
-if st.button("✨ Start Activity", type="primary") and (selected_tense or option == "Get Assessment Feedback"):
-    if not api_key:
-        st.error("Please provide an API key.")
+    selected_tense = None
+    if option != "Get Assessment Feedback":
+        st.markdown("### 🎯 Choose Your Target Tense")
+        main_category = st.selectbox("Select Time Horizon:", ["-- Select --", "Present", "Past", "Future"])
+        sub_tenses = ["Simple", "Continuous", "Perfect", "Perfect Continuous"]
+        if main_category != "-- Select --":
+            chosen_sub = st.radio(f"Choose the specific {main_category} Tense form:", sub_tenses, horizontal=True)
+            selected_tense = f"Simple {main_category}" if chosen_sub == "Simple" else f"{main_category} {chosen_sub}"
+        if selected_tense: st.info(f"Active Focus: **{selected_tense}**")
+        else: st.warning("Please select a time horizon and sub-tense from above to get started.")
     else:
-        st.session_state.quiz_active = False
-        st.session_state.current_view = None
-        st.session_state.macro_feedback = ""
-        st.session_state.wrong_answers_history = []
+        st.info("🚀 **Global Diagnostic Mode Active:** 15-question mixed assessment.")
+        selected_tense = "All Tenses Comprehensive Assessment"
 
-        genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-3.5-flash")
+    # --- CONTROLLER ACTIONS ---
+    if st.button("✨ Start Activity", type="primary") and (selected_tense or option == "Get Assessment Feedback"):
+        if not api_key:
+            st.error("No API key found.")
+        else:
+            st.session_state.quiz_active = False
+            st.session_state.current_view = None
+            st.session_state.macro_feedback = ""
+            st.session_state.wrong_answers_history = []
 
-        with st.spinner("Loading..."):
-            if option == "Break Down Concept":
-                prompt = f"Provide a structural breakdown of '{selected_tense}' split into 3 parts separated by '---SECTION---'. Part 1: Blueprint & Analogy. Part 2: Affirmative/Negative/Interrogative formulas. Part 3: Signals/Time markers."
-                res = model.generate_content(prompt)
-                st.session_state.explanation_sections = [s.strip() for s in res.text.split("---SECTION---") if s.strip()]
-                st.session_state.current_card_idx = 0
-                st.session_state.current_view = "concept"
-            elif option == "Read Real-Life Examples":
-                prompt = f"Provide 4 distinct natural dialogue examples using '{selected_tense}' and note speaker intent."
-                st.session_state.examples_text = model.generate_content(prompt).text
-                st.session_state.current_view = "examples"
-            elif option in ["Take Interactive Quiz", "Get Assessment Feedback"]:
-                is_assess = (option == "Get Assessment Feedback")
-                st.session_state.quiz_questions = generate_quiz_data(selected_tense, api_key, is_assessment=is_assess)
-                st.session_state.quiz_active = True
-                st.session_state.current_view = "quiz"
+            genai.configure(api_key=api_key)
+            model = genai.GenerativeModel("gemini-3.5-flash")
+
+            with st.spinner("Loading..."):
+                persona = "You are Twig, a friendly and encouraging English study buddy with a sense of humour. Your task is to teach English Grammar Tenses to students of different levels of English language proficiency in a clear and easy to understand manner."
+                if option == "Break Down Concept":
+                    prompt = f"{persona} Provide a structural breakdown of '{selected_tense}' split into 3 parts separated by '---SECTION---'. Part 1: Blueprint & Analogy. Part 2: Affirmative/Negative/Interrogative formulas. Part 3: Signals/Time markers."
+                    res = model.generate_content(prompt)
+                    st.session_state.explanation_sections = [s.strip() for s in res.text.split("---SECTION---") if s.strip()]
+                    st.session_state.current_card_idx = 0
+                    st.session_state.current_view = "concept"
+                elif option == "Read Real-Life Examples":
+                    prompt = f"{persona} Provide 4 distinct natural dialogue examples using '{selected_tense}' and note speaker intent."
+                    st.session_state.examples_text = model.generate_content(prompt).text
+                    st.session_state.current_view = "examples"
+                elif option in ["Take Interactive Quiz", "Get Assessment Feedback"]:
+                    is_assess = (option == "Get Assessment Feedback")
+                    st.session_state.quiz_questions = generate_quiz_data(selected_tense, api_key, is_assessment=is_assess)
+                    st.session_state.quiz_active = True
+                    st.session_state.current_view = "quiz"
 
 # --- UI RENDERING ---
 if st.session_state.current_view == "concept" and not st.session_state.quiz_active:
     st.markdown("---")
     sections = st.session_state.explanation_sections
     c_idx = st.session_state.current_card_idx
-    titles = ["🃏 Card 1: The Core Blueprint", "📐 Card 2: The Core Formula", "🚦 Card 3: Signals & Triggers"]
-    if sections and c_idx < len(sections):
+    titles = ["", "🃏 Card 1: The Core Blueprint", "📐 Card 2: The Core Formula", "🚦 Card 3: Signals & Triggers"]
+    if sections and c_idx < (len(sections)+1):
         st.write(f"### {titles[c_idx]}")
-        st.info(sections[c_idx])
+        st.write(sections[c_idx])
         col1, col2 = st.columns(2)
         with col1:
-            if c_idx > 0 and st.button("⬅️ Previous"): st.session_state.current_card_idx -= 1; st.rerun()
+            if c_idx > 0 and st.button("◀ Previous"): st.session_state.current_card_idx -= 1; st.rerun()
         with col2:
             if c_idx < len(sections) - 1:
-                if st.button("Next ➡️"): st.session_state.current_card_idx += 1; st.rerun()
+                if st.button("Next ▶"): st.session_state.current_card_idx += 1; st.rerun()
             elif st.button("Finish 🎉"): st.session_state.current_view = None; st.rerun()
 
 if st.session_state.current_view == "examples" and not st.session_state.quiz_active:
@@ -107,7 +109,7 @@ if st.session_state.quiz_active and st.session_state.quiz_questions:
                     st.session_state.wrong_answers_history.append({"question": qs[idx]["question"], "user_answer": choice, "correct_answer": correct, "tense_category": qs[idx].get("tense_category", "Unknown")})
                     st.session_state[f"log_{idx}"] = True
             st.info(f"💡 **Explanation:** {qs[idx]['explanation']}")
-            if st.button("Next Question ➡️"): st.session_state.current_question_idx += 1; st.session_state.quiz_submitted = False; st.rerun()
+            if st.button("Next Question ▶"): st.session_state.current_question_idx += 1; st.session_state.quiz_submitted = False; st.rerun()
     else:
         st.balloons()
         st.markdown(f"### 🏆 Session Complete! Score: **{st.session_state.score}/{len(qs)}**")
